@@ -24,6 +24,8 @@ from rag_evals.samples import load_test_data
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.generation
+@pytest.mark.slow
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "get_faithfulness_sample",
@@ -52,6 +54,8 @@ async def test_faithfulness(
     assert score > threshold, f"Faithfulness {float(score):.4f} is below threshold {threshold}"
 
 
+@pytest.mark.generation
+@pytest.mark.slow
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "get_relevance_factual_sample",
@@ -62,6 +66,7 @@ async def test_relevancy_metrics_initialise(
     llm_wrapper,
     embeddings_wrapper,
     get_relevance_factual_sample: SingleTurnSample,
+    settings,
 ) -> None:
     """
     Answer Relevancy metric:
@@ -95,10 +100,13 @@ async def test_relevancy_metrics_initialise(
         user_input=s.user_input,
         response=s.response,
     )
-    logger.info("answer_relevancy=%.4f", score)
-    assert 0.0 <= score <= 1.0, f"Score {score} is outside [0, 1]"
+    threshold = settings.score_thresholds["answer_relevancy"]
+    logger.info("answer_relevancy=%.4f  threshold=%.2f", score, threshold)
+    assert score > threshold, f"answer_relevancy={score:.4f} is below threshold {threshold}"
 
 
+@pytest.mark.generation
+@pytest.mark.slow
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "get_relevance_factual_sample",

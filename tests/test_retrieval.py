@@ -22,6 +22,8 @@ from rag_evals.samples import load_test_data
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.retrieval
+@pytest.mark.slow
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "get_precision_sample",
@@ -52,6 +54,8 @@ async def test_context_precision(
     )
 
 
+@pytest.mark.retrieval
+@pytest.mark.slow
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "get_recall_sample",

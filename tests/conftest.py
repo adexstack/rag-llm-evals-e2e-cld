@@ -103,8 +103,10 @@ def get_topic_data_static() -> MultiTurnSample:
 
 
 @pytest.fixture
-def get_topic_data_live() -> MultiTurnSample:
+def get_topic_data_live(request) -> MultiTurnSample:
     """Multi-turn sample built from live RAG API responses."""
+    if not request.config.getoption("--live"):
+        pytest.skip("pass --live to run tests that make live calls via fixtures")
     questions = [
         "How many articles are there in the selenium webdriver python course",
         "How many downloadable resources are there in this course?",

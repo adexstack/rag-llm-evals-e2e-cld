@@ -34,6 +34,8 @@ _RUBRICS = {
 }
 
 
+@pytest.mark.rubric
+@pytest.mark.slow
 @pytest.mark.asyncio
 async def test_rubric_score(
     llm_wrapper,

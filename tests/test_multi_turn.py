@@ -18,6 +18,8 @@ from rag_evals.config import get_settings
 logger = logging.getLogger(__name__)
 
 
+@pytest.mark.multi_turn
+@pytest.mark.slow
 @pytest.mark.asyncio
 async def test_topic_adherence_static(
     llm_wrapper,
@@ -32,6 +34,8 @@ async def test_topic_adherence_static(
     assert score > threshold, f"Topic adherence {float(score):.4f} is below threshold {threshold}"
 
 
+@pytest.mark.multi_turn
+@pytest.mark.slow
 @pytest.mark.asyncio
 async def test_topic_adherence_live(
     llm_wrapper,

@@ -78,6 +78,8 @@ _MOCK_DOCS = [
 _EXPECTED_SAMPLE_COUNT = 2
 
 
+@pytest.mark.data_creation
+@pytest.mark.slow
 @pytest.mark.asyncio
 async def test_testset_generation(llm_wrapper, embeddings_wrapper) -> None:
     """
