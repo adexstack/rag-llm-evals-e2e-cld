@@ -16,7 +16,7 @@ from ragas.embeddings import OpenAIEmbeddings
 from ragas.llms import llm_factory
 from ragas.messages import AIMessage, HumanMessage
 
-from rag_evals.client import ask
+from rag_evals.client import RagClient
 from rag_evals.config import get_settings
 from rag_evals.samples import build_single_turn_sample
 
@@ -51,29 +51,35 @@ def embeddings_wrapper(async_openai_client, settings):
     return OpenAIEmbeddings(client=async_openai_client, model=settings.embedding_model)
 
 
+@pytest.fixture(scope="session")
+def rag_client(settings) -> RagClient:
+    """Single RagClient reused for the whole test session."""
+    return RagClient(base_url=settings.rag_api_base_url, timeout=settings.api_timeout_seconds)
+
+
 # ---------------------------------------------------------------------------
 # Sample fixtures — built per test from parametrized data
 # ---------------------------------------------------------------------------
 
 
 @pytest.fixture
-def get_precision_sample(request) -> SingleTurnSample:
-    return build_single_turn_sample(request.param, include_reference=False)
+def get_precision_sample(request, rag_client) -> SingleTurnSample:
+    return build_single_turn_sample(request.param, rag_client, include_reference=False)
 
 
 @pytest.fixture
-def get_recall_sample(request) -> SingleTurnSample:
-    return build_single_turn_sample(request.param, include_reference=True)
+def get_recall_sample(request, rag_client) -> SingleTurnSample:
+    return build_single_turn_sample(request.param, rag_client, include_reference=True)
 
 
 @pytest.fixture
-def get_faithfulness_sample(request) -> SingleTurnSample:
-    return build_single_turn_sample(request.param, include_reference=False)
+def get_faithfulness_sample(request, rag_client) -> SingleTurnSample:
+    return build_single_turn_sample(request.param, rag_client, include_reference=False)
 
 
 @pytest.fixture
-def get_relevance_factual_sample(request) -> SingleTurnSample:
-    return build_single_turn_sample(request.param, include_reference=True)
+def get_relevance_factual_sample(request, rag_client) -> SingleTurnSample:
+    return build_single_turn_sample(request.param, rag_client, include_reference=True)
 
 
 @pytest.fixture
@@ -103,7 +109,7 @@ def get_topic_data_static() -> MultiTurnSample:
 
 
 @pytest.fixture
-def get_topic_data_live(request) -> MultiTurnSample:
+def get_topic_data_live(request, rag_client) -> MultiTurnSample:
     """Multi-turn sample built from live RAG API responses."""
     if not request.config.getoption("--live"):
         pytest.skip("pass --live to run tests that make live calls via fixtures")
@@ -113,7 +119,7 @@ def get_topic_data_live(request) -> MultiTurnSample:
     ]
     conversation: list[HumanMessage | AIMessage] = []
     for question in questions:
-        response_dict = ask(question)
+        response_dict = rag_client.ask(question)
         conversation.append(HumanMessage(content=question))
         conversation.append(AIMessage(content=response_dict["answer"]))
         logger.info("Live API answer for %r: %s", question, response_dict["answer"][:80])

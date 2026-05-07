@@ -8,26 +8,31 @@ from typing import Any
 
 from ragas import SingleTurnSample
 
-from . import client
+from .client import RagClient
 
 logger = logging.getLogger(__name__)
+
+# Resolves testdata/ paths relative to the project root regardless of CWD.
+# src/rag_evals/samples.py → src/rag_evals/ → src/ → project root
+_PROJECT_ROOT = Path(__file__).parent.parent.parent
 
 
 def load_test_data(path: str | Path) -> list[dict[str, Any]]:
     """Load JSON test-data from *path* and return it as a list of dicts."""
-    file_path = Path(path)
-    if not file_path.exists():
-        raise FileNotFoundError(f"Test data file not found: {file_path}")
-    with file_path.open(encoding="utf-8") as fh:
+    resolved = Path(path) if Path(path).is_absolute() else _PROJECT_ROOT / path
+    if not resolved.exists():
+        raise FileNotFoundError(f"Test data file not found: {resolved}")
+    with resolved.open(encoding="utf-8") as fh:
         data = json.load(fh)
     if not isinstance(data, list):
-        raise ValueError(f"Expected a JSON array in {file_path}, got {type(data).__name__}")
-    logger.debug("Loaded %d records from %s", len(data), file_path)
+        raise ValueError(f"Expected a JSON array in {resolved}, got {type(data).__name__}")
+    logger.debug("Loaded %d records from %s", len(data), resolved)
     return data
 
 
 def build_single_turn_sample(
     test_data: dict[str, Any],
+    client: RagClient,
     *,
     include_reference: bool = False,
 ) -> SingleTurnSample:
@@ -36,6 +41,7 @@ def build_single_turn_sample(
     Args:
         test_data: dict with at minimum a ``"question"`` key; optionally
                    ``"reference"`` when ``include_reference=True``.
+        client: the RagClient instance to use for the API call.
         include_reference: when True the sample's ``reference`` field is
                            populated from ``test_data["reference"]``.
 
