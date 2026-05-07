@@ -8,6 +8,7 @@ function - sample objects that are built per-test from parametrized test data
 from __future__ import annotations
 
 import logging
+from pathlib import Path
 
 import pytest
 from openai import AsyncOpenAI
@@ -30,6 +31,9 @@ logger = logging.getLogger(__name__)
 
 @pytest.fixture(scope="session")
 def settings():
+    # To test ConfigurationError or env-var overrides in a future test_config.py,
+    # call get_settings.cache_clear() before and after via monkeypatch.setenv /
+    # monkeypatch.delenv. The lru_cache persists for the process lifetime otherwise.
     return get_settings()
 
 
@@ -55,6 +59,12 @@ def embeddings_wrapper(async_openai_client, settings):
 def rag_client(settings) -> RagClient:
     """Single RagClient reused for the whole test session."""
     return RagClient(base_url=settings.rag_api_base_url, timeout=settings.api_timeout_seconds)
+
+
+@pytest.fixture(scope="session")
+def results_path() -> Path:
+    """Filesystem path for persisted metric results. Override per-test for isolation."""
+    return Path("reports/ragas_results.csv")
 
 
 # ---------------------------------------------------------------------------

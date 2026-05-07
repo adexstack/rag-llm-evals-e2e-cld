@@ -17,7 +17,6 @@ from ragas.metrics.collections import (
     Faithfulness,
 )
 
-from rag_evals.config import get_settings
 from rag_evals.reporting import save_results
 from rag_evals.samples import load_test_data
 
@@ -118,6 +117,7 @@ async def test_all_standard_metrics(
     embeddings_wrapper,
     get_relevance_factual_sample: SingleTurnSample,
     settings,
+    results_path,
 ) -> None:
     """Run all four core metrics concurrently and persist results to CSV."""
     s = get_relevance_factual_sample
@@ -157,9 +157,10 @@ async def test_all_standard_metrics(
     for metric, value in results.items():
         logger.info("%s=%.4f", metric, value)
 
-    save_results(results)
+    save_results(results, results_path)
 
     thresholds = settings.score_thresholds
     assert ar.value > thresholds["answer_relevancy"], f"answer_relevancy={ar.value:.4f}"
     assert cp.value > thresholds["context_precision"], f"context_precision={cp.value:.4f}"
     assert f.value > thresholds["faithfulness"], f"faithfulness={f.value:.4f}"
+    assert cr.value > thresholds["context_recall"], f"context_recall={cr.value:.4f}"
