@@ -1,0 +1,14 @@
+{
+  "rag_api_base_url": "https://rahulshettyacademy.com/rag-llm",
+  "llm_model": "gpt-4o",
+  "embedding_model": "text-embedding-3-small",
+  "api_timeout_seconds": 30,
+  "score_thresholds": {
+    "context_precision": 0.8,
+    "context_recall": 0.7,
+    "faithfulness": 0.8,
+    "answer_relevancy": 0.8,
+    "topic_adherence": 0.8,
+    "rubric_score_min": 2.0
+  }
+}
