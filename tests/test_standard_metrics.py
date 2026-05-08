@@ -81,8 +81,12 @@ async def test_all_standard_metrics(
 
     save_results(results, results_path)
 
-    thresholds = settings.score_thresholds
-    assert ar.value > thresholds["answer_relevancy"], f"answer_relevancy={ar.value:.4f}"
-    assert cp.value > thresholds["context_precision"], f"context_precision={cp.value:.4f}"
-    assert f.value > thresholds["faithfulness"], f"faithfulness={f.value:.4f}"
-    assert cr.value > thresholds["context_recall"], f"context_recall={cr.value:.4f}"
+    for metric, value in [
+        ("answer_relevancy", ar.value),
+        ("context_precision", cp.value),
+        ("faithfulness", f.value),
+        ("context_recall", cr.value),
+    ]:
+        t = settings.threshold_for(metric)
+        if t is not None:
+            assert value > t, f"{metric}={value:.4f} is below threshold {t}"

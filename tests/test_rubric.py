@@ -7,7 +7,6 @@ import pytest
 from ragas import SingleTurnSample
 from ragas.metrics.collections import RubricsScoreWithReference
 
-from rag_evals.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -55,6 +54,8 @@ async def test_rubric_score(
     )
     min_score = settings.threshold_for("rubric_score_min")
     logger.info("rubric_score=%.1f  min_expected=%s", score, min_score)
+    # This is intentionally left unconditional
+    # it validates the metric is functioning correctly, not a quality threshold.     
     assert 1 <= float(score) <= 5, f"Rubric score {score} is outside valid range [1, 5]"
     if min_score is not None:
         assert float(score) >= min_score, f"Rubric score {float(score)} is below minimum {min_score}"
