@@ -88,7 +88,7 @@ def get_faithfulness_sample(request, rag_client) -> SingleTurnSample:
 
 
 @pytest.fixture
-def get_relevance_factual_sample(request, rag_client) -> SingleTurnSample:
+def get_relevance_fact_sample(request, rag_client) -> SingleTurnSample:
     return build_single_turn_sample(request.param, rag_client, include_reference=True)
 
 @pytest.fixture

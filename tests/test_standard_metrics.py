@@ -31,7 +31,7 @@ logger = logging.getLogger(__name__)
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     "get_standard_metrics_sample",
-    load_test_data("testdata/standard_metrics.json"),
+    load_test_data("testdata/standard_metrics_data.json"),
     indirect=True,
 )
 async def test_all_standard_metrics(
