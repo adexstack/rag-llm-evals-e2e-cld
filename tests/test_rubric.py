@@ -53,7 +53,8 @@ async def test_rubric_score(
         response=get_single_turn_sample.response,
         reference=get_single_turn_sample.reference,
     )
-    min_score = settings.score_thresholds["rubric_score_min"]
-    logger.info("rubric_score=%.1f  min_expected=%.1f", score, min_score)
-    assert 1 <= score <= 5, f"Rubric score {score} is outside valid range [1, 5]"
-    assert score >= min_score, f"Rubric score {score} is below minimum {min_score}"
+    min_score = settings.threshold_for("rubric_score_min")
+    logger.info("rubric_score=%.1f  min_expected=%s", score, min_score)
+    assert 1 <= float(score) <= 5, f"Rubric score {score} is outside valid range [1, 5]"
+    if min_score is not None:
+        assert float(score) >= min_score, f"Rubric score {float(score)} is below minimum {min_score}"

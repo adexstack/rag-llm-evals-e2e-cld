@@ -1,4 +1,5 @@
 {
+  "assert_test_threshold": true,
   "rag_api_base_url": "https://rahulshettyacademy.com/rag-llm",
   "llm_model": "gpt-4o",
   "embedding_model": "text-embedding-3-small",

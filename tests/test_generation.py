@@ -48,9 +48,10 @@ async def test_faithfulness(
         response=get_faithfulness_sample.response,
         retrieved_contexts=get_faithfulness_sample.retrieved_contexts,
     )
-    threshold = settings.score_thresholds["faithfulness"]
-    logger.info("faithfulness=%.4f  threshold=%.2f", score, threshold)
-    assert score > threshold, f"Faithfulness {float(score):.4f} is below threshold {threshold}"
+    threshold = settings.threshold_for("faithfulness")
+    logger.info("faithfulness=%.4f  threshold=%s", score, threshold)
+    if threshold is not None:
+        assert float(score) > threshold, f"Faithfulness {float(score):.4f} is below threshold {threshold}"
 
 
 @pytest.mark.generation
@@ -99,7 +100,8 @@ async def test_relevancy_metrics_initialise(
         user_input=s.user_input,
         response=s.response,
     )
-    threshold = settings.score_thresholds["answer_relevancy"]
-    logger.info("answer_relevancy=%.4f  threshold=%.2f", score, threshold)
-    assert score > threshold, f"answer_relevancy={score:.4f} is below threshold {threshold}"
+    threshold = settings.threshold_for("answer_relevancy")
+    logger.info("answer_relevancy=%.4f  threshold=%s", score, threshold)
+    if threshold is not None:
+        assert float(score) > threshold, f"answer_relevancy={float(score):.4f} is below threshold {threshold}"
 

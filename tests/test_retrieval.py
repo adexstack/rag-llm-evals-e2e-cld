@@ -47,11 +47,10 @@ async def test_context_precision(
         response=get_precision_sample.response,
         retrieved_contexts=get_precision_sample.retrieved_contexts,
     )
-    threshold = settings.score_thresholds["context_precision"]
-    logger.info("context_precision=%.4f  threshold=%.2f", score, threshold)
-    assert score > threshold, (
-        f"Context precision {float(score):.4f} is below threshold {threshold}"
-    )
+    threshold = settings.threshold_for("context_precision")
+    logger.info("context_precision=%.4f  threshold=%s", score, threshold)
+    if threshold is not None:
+        assert float(score) > threshold, f"Context precision {float(score):.4f} is below threshold {threshold}"
 
 
 @pytest.mark.retrieval
@@ -79,8 +78,7 @@ async def test_context_recall(
         retrieved_contexts=get_recall_sample.retrieved_contexts,
         reference=get_recall_sample.reference,
     )
-    threshold = settings.score_thresholds["context_recall"]
-    logger.info("context_recall=%.4f  threshold=%.2f", score, threshold)
-    assert score > threshold, (
-        f"Context recall {float(score):.4f} is below threshold {threshold}"
-    )
+    threshold = settings.threshold_for("context_recall")
+    logger.info("context_recall=%.4f  threshold=%s", score, threshold)
+    if threshold is not None:
+        assert float(score) > threshold, f"Context recall {float(score):.4f} is below threshold {threshold}"

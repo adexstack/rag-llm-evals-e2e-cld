@@ -29,9 +29,10 @@ async def test_topic_adherence_static(
     """Topic adherence test using hardcoded, deterministic conversation."""
     metric = TopicAdherenceScore(llm=llm_wrapper)
     score = await metric.multi_turn_ascore(get_topic_data_static)
-    threshold = settings.score_thresholds["topic_adherence"]
-    logger.info("topic_adherence (static)=%.4f  threshold=%.2f", score, threshold)
-    assert score > threshold, f"Topic adherence {float(score):.4f} is below threshold {threshold}"
+    threshold = settings.threshold_for("topic_adherence")
+    logger.info("topic_adherence (static)=%.4f  threshold=%s", score, threshold)
+    if threshold is not None:
+        assert float(score) > threshold, f"Topic adherence {float(score):.4f} is below threshold {threshold}"
 
 
 @pytest.mark.multi_turn
@@ -45,6 +46,7 @@ async def test_topic_adherence_live(
     """Topic adherence test using live RAG API responses."""
     metric = TopicAdherenceScore(llm=llm_wrapper)
     score = await metric.multi_turn_ascore(get_topic_data_live)
-    threshold = settings.score_thresholds["topic_adherence"]
-    logger.info("topic_adherence (live)=%.4f  threshold=%.2f", score, threshold)
-    assert score > threshold, f"Topic adherence {float(score):.4f} is below threshold {threshold}"
+    threshold = settings.threshold_for("topic_adherence")
+    logger.info("topic_adherence (live)=%.4f  threshold=%s", score, threshold)
+    if threshold is not None:
+        assert float(score) > threshold, f"Topic adherence {float(score):.4f} is below threshold {threshold}"
