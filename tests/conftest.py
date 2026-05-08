@@ -15,11 +15,16 @@ from openai import AsyncOpenAI
 from ragas import MultiTurnSample, SingleTurnSample
 from ragas.embeddings import OpenAIEmbeddings
 from ragas.llms import llm_factory
-from ragas.messages import AIMessage, HumanMessage
 
 from rag_evals.client import RagClient
 from rag_evals.config import get_settings
-from rag_evals.samples import build_single_turn_sample
+from rag_evals.samples import (
+    build_multi_turn_sample_live,
+    build_multi_turn_sample_static,
+    build_single_turn_from_data,
+    build_single_turn_sample,
+    load_sample,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -97,49 +102,16 @@ def get_standard_metrics_sample(request, rag_client) -> SingleTurnSample:
 
 @pytest.fixture
 def get_single_turn_sample() -> SingleTurnSample:
-    return SingleTurnSample(
-        user_input="Where is the Eiffel Tower located?",
-        response="The Eiffel Tower is located in Europe and it is part of France.",
-        reference="The Eiffel Tower is located in Paris.",
-    )
+    return build_single_turn_from_data(load_sample("testdata/single_turn_sample.json"))
 
 
 @pytest.fixture
 def get_topic_data_static() -> MultiTurnSample:
-    """Hardcoded multi-turn sample for deterministic topic-adherence tests."""
-    conversation = [
-        HumanMessage(content="How many articles are there in the selenium webdriver python course"),
-        AIMessage(content="There are 23 articles in the Selenium Webdriver Python course"),
-        HumanMessage(content="How many downloadable resources are there in this course?"),
-        AIMessage(content="There are 9 downloadable resources in the course."),
-    ]
-    reference = [
-        "The AI should:\n"
-        "1. Give results related to the selenium webdriver python course\n"
-        "2. There are 23 articles and 9 downloadable resources in the course"
-    ]
-    return MultiTurnSample(user_input=conversation, reference_topics=reference)
+    return build_multi_turn_sample_static(load_sample("testdata/multi_turn_static.json"))
 
 
 @pytest.fixture
 def get_topic_data_live(request, rag_client) -> MultiTurnSample:
-    """Multi-turn sample built from live RAG API responses."""
     if not request.config.getoption("--live"):
         pytest.skip("pass --live to run tests that make live calls via fixtures")
-    questions = [
-        "How many articles are there in the selenium webdriver python course",
-        "How many downloadable resources are there in this course?",
-    ]
-    conversation: list[HumanMessage | AIMessage] = []
-    for question in questions:
-        response_dict = rag_client.ask(question)
-        conversation.append(HumanMessage(content=question))
-        conversation.append(AIMessage(content=response_dict["answer"]))
-        logger.info("Live API answer for %r: %s", question, response_dict["answer"][:80])
-
-    reference = [
-        "The AI should:\n"
-        "1. Give results related to the selenium webdriver python course\n"
-        "2. There are 23 articles and 9 downloadable resources in the course"
-    ]
-    return MultiTurnSample(user_input=conversation, reference_topics=reference)
+    return build_multi_turn_sample_live(load_sample("testdata/multi_turn_live.json"), rag_client)
