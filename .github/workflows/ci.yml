@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
+
+      # .python-version pins 3.12; uv reads it automatically
+      - name: Install dependencies
+        run: uv sync --frozen --extra test
+
+      - name: Run tests
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          RAGAS_APP_TOKEN: ${{ secrets.RAGAS_APP_TOKEN }}
+        run: |
+          uv run pytest \
+            --html=reports/test_report.html \
+            --self-contained-html \
+            --junit-xml=reports/junit.xml
+
+      # Reads reports/ragas_results.csv written by test_all_standard_metrics.
+      # continue-on-error so a missing CSV (e.g. that test was skipped) doesn't
+      # block artifact upload.
+      - name: Generate results dashboard
+        if: always()
+        continue-on-error: true
+        run: |
+          uv run python scripts/create_dashboard.py \
+            --input  reports/ragas_results.csv \
+            --output reports/results_dashboard.html
+
+      - name: Upload reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports-${{ github.run_number }}
+          path: reports/
+          retention-days: 30
