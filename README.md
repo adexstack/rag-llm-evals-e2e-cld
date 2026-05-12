@@ -27,19 +27,20 @@ RAG API (external)
         ▼
 src/rag_evals/
   client.py      ← HTTP client with retry + timeout
-  samples.py     ← builds Ragas SingleTurnSample from API response
-  config.py      ← all settings from env vars (no hardcoded values)
+  samples.py     ← builds Ragas sample objects from API responses or static data
+  config.py      ← three-layer settings: env vars > config.json > built-in defaults
   reporting.py   ← writes results to reports/ragas_results.csv
   exceptions.py  ← typed exceptions (RagAPIError, ConfigurationError …)
         │
         ▼
 tests/
-  conftest.py           ← session-scoped LLM + embeddings fixtures
-  test_retrieval.py     ← Context Precision, Context Recall
-  test_generation.py    ← Faithfulness, Answer Relevancy, all-metrics aggregate
-  test_multi_turn.py    ← Topic Adherence (static + live conversation)
-  test_rubric.py        ← Rubric-based scoring
-  test_data_creation.py ← Ragas TestsetGenerator smoke test
+  conftest.py               ← session-scoped LLM + embeddings fixtures
+  test_retrieval.py         ← Context Precision, Context Recall
+  test_generation.py        ← Faithfulness, Answer Relevancy, Answer Correctness
+  test_standard_metrics.py  ← all four core metrics concurrently, writes CSV
+  test_multi_turn.py        ← Topic Adherence (static + live conversation)
+  test_rubric.py            ← Rubric-based scoring
+  test_data_creation.py     ← Ragas TestsetGenerator smoke test
         │
         ▼
 scripts/
@@ -67,7 +68,8 @@ git clone <repo-url>
 cd rag-llm-evals-e2e-cld
 
 # 2. Install dependencies into an isolated .venv
-uv sync
+#    --extra test installs pytest, pytest-asyncio, pytest-html, rapidfuzz
+uv sync --extra test
 
 # 3. Configure secrets (see next section)
 cp .env.example .env
@@ -77,19 +79,29 @@ cp .env.example .env
 
 ## Configuration
 
-All settings are read from environment variables. Copy `.env.example` to `.env` and fill in your values — **never commit `.env`** (it is gitignored).
+Settings follow a three-layer priority stack: **env vars > `config.json` > built-in defaults**.
+
+- **Secrets** (`OPENAI_API_KEY`, `RAGAS_APP_TOKEN`) are env-var only — never read from `config.json`.
+- **Non-secret defaults** (models, timeout, thresholds) can be changed by editing `config.json` at the project root without touching environment files.
+- **CI/CD** can override any value per-environment via env vars.
+
+Copy `.env.example` to `.env` and fill in your values — **never commit `.env`** (it is gitignored).
 
 ```dotenv
 # .env
 OPENAI_API_KEY=sk-...          # required
 
 # Optional — defaults shown
+RAGAS_APP_TOKEN=               # only needed for ragas.app uploads
 RAG_API_BASE_URL=https://rahulshettyacademy.com/rag-llm
 LLM_MODEL=gpt-4o
 EMBEDDING_MODEL=text-embedding-3-small
 API_TIMEOUT_SECONDS=30
 
-# Score thresholds — lower these for CI smoke tests if needed
+# Set to false to skip ALL threshold assertions (useful for exploratory runs)
+ASSERT_TEST_THRESHOLD=true
+
+# Per-metric score thresholds — set to "" (empty string) to skip that metric's assertion
 THRESHOLD_CONTEXT_PRECISION=0.8
 THRESHOLD_CONTEXT_RECALL=0.7
 THRESHOLD_FAITHFULNESS=0.8
@@ -98,28 +110,45 @@ THRESHOLD_TOPIC_ADHERENCE=0.8
 THRESHOLD_RUBRIC_SCORE_MIN=2.0
 ```
 
-> **Note:** `RAGAS_APP_TOKEN` is only required if you upload results to [ragas.app](https://ragas.app). Leave it blank otherwise.
+The same keys are available in `config.json` (camelCase → snake_case, thresholds nested under `score_thresholds`). Example:
+
+```json
+{
+  "assert_test_threshold": true,
+  "score_thresholds": {
+    "context_precision": "",
+    "context_recall": 0.7
+  }
+}
+```
+
+Setting a threshold to `""` in `config.json` or as an env var disables the assertion for that metric without affecting others.
 
 ---
 
 ## Running the Tests
 
+**Always use `python -m pytest`** — bare `pytest` skips editable-install resolution.
+
 ```bash
 # Run the full suite
-pytest
+python -m pytest
 
 # Run a specific module
-pytest tests/test_retrieval.py -v
+python -m pytest tests/test_retrieval.py -v
 
 # Run a single test
-pytest tests/test_generation.py::test_faithfulness -v
+python -m pytest tests/test_generation.py::test_faithfulness -v
 
 # Run by marker
-pytest -m retrieval
-pytest -m "not slow"
+python -m pytest -m retrieval
+python -m pytest -m "not slow"
+
+# Include tests that call the RAG API inside fixtures
+python -m pytest --live
 
 # Generate an HTML test report
-pytest --html=reports/test_report.html --self-contained-html
+python -m pytest --html=reports/test_report.html --self-contained-html
 ```
 
 ### Available markers
@@ -127,7 +156,7 @@ pytest --html=reports/test_report.html --self-contained-html
 | Marker | Tests |
 |--------|-------|
 | `retrieval` | Context Precision, Context Recall |
-| `generation` | Faithfulness, Answer Relevancy, all-metrics aggregate |
+| `generation` | Faithfulness, Answer Relevancy, Answer Correctness, all-metrics aggregate |
 | `multi_turn` | Topic Adherence (static + live) |
 | `rubric` | Rubric-based scoring |
 | `data_creation` | TestsetGenerator smoke test |
@@ -136,14 +165,14 @@ pytest --html=reports/test_report.html --self-contained-html
 ### Expected output
 
 ```
-tests/test_retrieval.py::test_context_precision[...] PASSED
-tests/test_retrieval.py::test_context_recall[...]    PASSED
-tests/test_generation.py::test_faithfulness[...]     PASSED
-tests/test_generation.py::test_all_standard_metrics  PASSED   ← writes reports/ragas_results.csv
-tests/test_multi_turn.py::test_topic_adherence_static PASSED
-tests/test_multi_turn.py::test_topic_adherence_live  PASSED
-tests/test_rubric.py::test_rubric_score              PASSED
-tests/test_data_creation.py::test_testset_generation PASSED
+tests/test_retrieval.py::test_context_precision[...]       PASSED
+tests/test_retrieval.py::test_context_recall[...]          PASSED
+tests/test_generation.py::test_faithfulness[...]           PASSED
+tests/test_standard_metrics.py::test_all_standard_metrics  PASSED   ← writes reports/ragas_results.csv
+tests/test_multi_turn.py::test_topic_adherence_static      PASSED
+tests/test_multi_turn.py::test_topic_adherence_live        PASSED   (requires --live)
+tests/test_rubric.py::test_rubric_score                    PASSED
+tests/test_data_creation.py::test_testset_generation       PASSED
 ```
 
 ---
@@ -155,10 +184,10 @@ tests/test_data_creation.py::test_testset_generation PASSED
 Reads `reports/ragas_results.csv` (written by `test_all_standard_metrics`) and generates a self-contained HTML file.
 
 ```bash
-.venv/bin/python scripts/create_dashboard.py
+uv run python scripts/create_dashboard.py
 
 # Custom paths
-.venv/bin/python scripts/create_dashboard.py \
+uv run python scripts/create_dashboard.py \
   --input  reports/ragas_results.csv \
   --output reports/dashboard.html
 ```
@@ -183,24 +212,30 @@ rag-llm-evals-e2e-cld/
 │   └── rag_evals/
 │       ├── __init__.py
 │       ├── client.py        # RAG API HTTP client (retry, timeout, typed errors)
-│       ├── config.py        # Settings dataclass loaded from env vars
+│       ├── config.py        # Settings: env vars > config.json > built-in defaults
 │       ├── exceptions.py    # RagAPIError, RagAPITimeoutError, ConfigurationError
 │       ├── reporting.py     # save_results() → CSV
-│       └── samples.py       # build_single_turn_sample() helper
+│       └── samples.py       # sample-builder helpers (single-turn, multi-turn)
 │
 ├── tests/
-│   ├── conftest.py           # Session-scoped LLM + embeddings fixtures
-│   ├── test_retrieval.py     # Context Precision, Context Recall
-│   ├── test_generation.py    # Faithfulness, Answer Relevancy, all-metrics
-│   ├── test_multi_turn.py    # Topic Adherence
-│   ├── test_rubric.py        # Rubric scoring
-│   └── test_data_creation.py # Synthetic testset generation
+│   ├── conftest.py               # Session-scoped LLM + embeddings fixtures
+│   ├── test_retrieval.py         # Context Precision, Context Recall
+│   ├── test_generation.py        # Faithfulness, Answer Relevancy, Answer Correctness
+│   ├── test_standard_metrics.py  # All four core metrics concurrently, writes CSV
+│   ├── test_multi_turn.py        # Topic Adherence
+│   ├── test_rubric.py            # Rubric scoring
+│   └── test_data_creation.py     # Synthetic testset generation
 │
 ├── testdata/
 │   ├── precision_data.json
 │   ├── recall_data.json
 │   ├── faithfulness_data.json
-│   └── relevance_fact.json
+│   ├── relevance_fact_data.json
+│   ├── standard_metrics_data.json
+│   ├── single_turn_sample.json
+│   ├── multi_turn_static.json
+│   ├── multi_turn_live.json
+│   └── mock_docs.json
 │
 ├── scripts/
 │   ├── create_dashboard.py   # Generates HTML report from CSV
@@ -208,10 +243,14 @@ rag-llm-evals-e2e-cld/
 │
 ├── reports/                  # Generated — gitignored
 │
+├── .github/
+│   └── workflows/ci.yml      # GitHub Actions CI
+│
+├── config.json               # Non-secret defaults (overridable via env vars)
 ├── .env.example              # Safe config template
 ├── .gitignore
 ├── .python-version
-├── conftest.py               # Root conftest (sys.path bootstrap only)
+├── conftest.py               # Root conftest — registers --live CLI flag
 ├── pyproject.toml
 ├── pytest.ini
 └── uv.lock
@@ -231,58 +270,76 @@ rag-llm-evals-e2e-cld/
 | **Topic Adherence** | `test_multi_turn.py` | Does a multi-turn conversation stay on topic? |
 | **Rubric Score** | `test_rubric.py` | LLM-judged score (1–5) against custom rubric criteria |
 
-All score thresholds are configurable via environment variables (see [Configuration](#configuration)).
+All score thresholds are configurable via `config.json` or environment variables (see [Configuration](#configuration)).
 
 ---
 
 ## CI/CD Integration
 
-### GitHub Actions example
+The repository ships a ready-to-use workflow at `.github/workflows/ci.yml` that runs on every push to `main`, every pull request, and on manual dispatch.
 
 ```yaml
-# .github/workflows/rag-evals.yml
-name: RAG Evaluations
+# .github/workflows/ci.yml (actual workflow)
+name: CI
 
 on:
   push:
     branches: [main]
-  schedule:
-    - cron: "0 6 * * 1"   # weekly Monday 06:00 UTC
+  pull_request:
+  workflow_dispatch:
 
 jobs:
-  evaluate:
+  test:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: astral-sh/setup-uv@v3
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v5
         with:
-          version: "latest"
+          enable-cache: true
+          cache-dependency-glob: "uv.lock"
 
       - name: Install dependencies
-        run: uv sync
+        run: uv sync --frozen --extra test
 
-      - name: Run evaluations
+      - name: Run tests
         env:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          THRESHOLD_CONTEXT_RECALL: "0.5"   # relaxed for CI
+          RAGAS_APP_TOKEN: ${{ secrets.RAGAS_APP_TOKEN }}
         run: |
           uv run pytest \
             --html=reports/test_report.html \
             --self-contained-html \
-            -m "not slow"
+            --junit-xml=reports/junit.xml
 
-      - name: Generate dashboard
-        run: uv run python scripts/create_dashboard.py
+      - name: Generate results dashboard
+        if: always()
+        continue-on-error: true
+        run: |
+          uv run python scripts/create_dashboard.py \
+            --input  reports/ragas_results.csv \
+            --output reports/results_dashboard.html
 
       - name: Upload reports
+        if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: rag-eval-reports
+          name: test-reports-${{ github.run_number }}
           path: reports/
+          retention-days: 30
 ```
 
-> Add `OPENAI_API_KEY` to your repository's **Settings → Secrets and variables → Actions**.
+Add `OPENAI_API_KEY` (and optionally `RAGAS_APP_TOKEN`) to your repository's **Settings → Secrets and variables → Actions**.
+
+To relax thresholds for CI smoke tests without editing `config.json`, set env vars on the `Run tests` step:
+
+```yaml
+env:
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  THRESHOLD_CONTEXT_RECALL: "0.5"
+  ASSERT_TEST_THRESHOLD: "false"   # disable all assertions entirely
+```
 
 ---
 
@@ -292,7 +349,7 @@ jobs:
 
 1. Create a test function in the appropriate `tests/test_*.py` file.
 2. Use `build_single_turn_sample()` from `rag_evals.samples` for any test that hits the RAG API.
-3. Add a threshold to `.env.example` and `config.py → _default_thresholds()`.
+3. Add a threshold entry to `config.json` under `score_thresholds` and document the corresponding `THRESHOLD_*` env var in `.env.example`.
 
 ### Add new test data
 
