@@ -1,17 +1,19 @@
-# rag-llm-evals
+# rag-llm-evals (End-to-End LLM Evaluation Framework)
 
 End-to-end evaluation framework for a RAG (Retrieval-Augmented Generation) system using [Ragas](https://docs.ragas.io/) and OpenAI. Measures retrieval and generation quality across five metric families with a full pytest suite, structured logging, and an HTML/Streamlit dashboard.
 
 ## Why This Matters
 LLMs in production require **systematic validation** to ensure reliability, accuracy, and trust. This framework enables automated, repeatable evaluation workflows.
 
-## Features
-- RAG pipeline evaluation
-- Hallucination detection
-- Response quality scoring
-- Multi-turn conversation testing
-- Dataset generation for evaluation
-- CI/CD integration
+### 🔍 Key Capabilities
+- Automated evaluation of LLM responses
+- RAG pipeline validation (retrieval + generation)
+- Hallucination detection & scoring
+- Test dataset generation for multi-turn conversations
+- CI/CD-ready evaluation workflows
+
+### 🛠 Tech
+Python • Pytest • LLM APIs • CI/CD • Data Validation
 
 ## Evaluation Dashboard After Job Execution
 <img width="975" height="354" alt="image" src="https://github.com/user-attachments/assets/e9c7313c-a829-46b9-b454-9c22f074e369" />
