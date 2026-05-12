@@ -2,6 +2,24 @@
 
 End-to-end evaluation framework for a RAG (Retrieval-Augmented Generation) system using [Ragas](https://docs.ragas.io/) and OpenAI. Measures retrieval and generation quality across five metric families with a full pytest suite, structured logging, and an HTML/Streamlit dashboard.
 
+## Why This Matters
+LLMs in production require **systematic validation** to ensure reliability, accuracy, and trust. This framework enables automated, repeatable evaluation workflows.
+
+## Features
+- RAG pipeline evaluation
+- Hallucination detection
+- Response quality scoring
+- Multi-turn conversation testing
+- Dataset generation for evaluation
+- CI/CD integration
+
+## Evaluation Dashboard After Job Execution
+<img width="975" height="354" alt="image" src="https://github.com/user-attachments/assets/e9c7313c-a829-46b9-b454-9c22f074e369" />
+
+## Example Use Cases
+- Validating enterprise chatbots
+- Testing AI copilots
+- Benchmarking LLM performance
 ---
 
 ## Table of Contents
@@ -278,58 +296,6 @@ All score thresholds are configurable via `config.json` or environment variables
 
 The repository ships a ready-to-use workflow at `.github/workflows/ci.yml` that runs on every push to `main`, every pull request, and on manual dispatch.
 
-```yaml
-# .github/workflows/ci.yml (actual workflow)
-name: CI
-
-on:
-  push:
-    branches: [main]
-  pull_request:
-  workflow_dispatch:
-
-jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Set up uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-          cache-dependency-glob: "uv.lock"
-
-      - name: Install dependencies
-        run: uv sync --frozen --extra test
-
-      - name: Run tests
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-          RAGAS_APP_TOKEN: ${{ secrets.RAGAS_APP_TOKEN }}
-        run: |
-          uv run pytest \
-            --html=reports/test_report.html \
-            --self-contained-html \
-            --junit-xml=reports/junit.xml
-
-      - name: Generate results dashboard
-        if: always()
-        continue-on-error: true
-        run: |
-          uv run python scripts/create_dashboard.py \
-            --input  reports/ragas_results.csv \
-            --output reports/results_dashboard.html
-
-      - name: Upload reports
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-reports-${{ github.run_number }}
-          path: reports/
-          retention-days: 30
-```
-
 Add `OPENAI_API_KEY` (and optionally `RAGAS_APP_TOKEN`) to your repository's **Settings → Secrets and variables → Actions**.
 
 To relax thresholds for CI smoke tests without editing `config.json`, set env vars on the `Run tests` step:
@@ -369,3 +335,7 @@ No code changes required.
 LLM_MODEL=gpt-4o-mini
 EMBEDDING_MODEL=text-embedding-3-large
 ```
+
+## Future Improvements
+- Model comparison dashboards
+- Observability integration
